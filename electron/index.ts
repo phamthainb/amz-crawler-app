@@ -2,13 +2,13 @@
 import { join } from 'path';
 
 // Packages
-import { BrowserWindow, app, ipcMain, IpcMainEvent, nativeTheme } from 'electron';
+import { BrowserWindow, app, ipcMain, IpcMainEvent, nativeTheme, screen } from 'electron';
 import isDev from 'electron-is-dev';
-
-const height = 800;
-const width = 1200;
+import db, { runDBFunction } from './db';
 
 function createWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
   // Create the browser window.
   const window = new BrowserWindow({
     width,
@@ -33,7 +33,7 @@ function createWindow() {
     window?.loadFile(url);
   }
   // Open the DevTools.
-  // window.webContents.openDevTools();
+  window.webContents.openDevTools();
 
   // For AppBar
   ipcMain.on('minimize', () => {
@@ -80,4 +80,44 @@ app.on('window-all-closed', () => {
 ipcMain.on('message', (event: IpcMainEvent, message: any) => {
   console.log(message);
   setTimeout(() => event.sender.send('message', 'common.hiElectron'), 500);
+});
+
+// app logic here
+let crawlerRunning = false;
+ipcMain.handle('start-crawl', async () => {
+  crawlerRunning = true;
+
+  while (crawlerRunning) {
+    // get config, urls, threads from db
+    const threads = runDBFunction.getConfigValue({ key: 'threads' });
+    const urls = runDBFunction.getProductsByStatus({ status: 'import', limit: `${threads}` });
+    if (urls.length < 1) {
+      console.log('No more urls to crawl');
+      crawlerRunning = false;
+      break;
+    }
+    console.log('start-crawl', { urls: urls.length, threads });
+  }
+
+  console.log('Crawl stopped');
+  crawlerRunning = false;
+});
+
+ipcMain.handle('stop-crawl', async () => {
+  crawlerRunning = false;
+});
+
+ipcMain.handle('is-crawler-running', () => {
+  return crawlerRunning;
+});
+
+// get database
+ipcMain.handle('database', (_, { functionName, functionParams }: { functionName: string; functionParams: any }) => {
+  const stmt = (runDBFunction as any)[functionName];
+  console.log('database', { functionName, functionParams });
+  if (!stmt) {
+    throw new Error(`Function ${functionName} not found`);
+  }
+  // console.log('stmt', stmt.toString());
+  return stmt({ ...functionParams });
 });

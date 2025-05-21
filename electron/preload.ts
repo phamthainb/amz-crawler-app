@@ -185,6 +185,23 @@ const api = {
    */
   on: (channel: string, callback: (data: any) => void) => {
     ipcRenderer.on(channel, (_, data) => callback(data));
+  },
+
+  // database functions
+  database: (functionName: string, functionParams: any) => {
+    return ipcRenderer.invoke('database', {
+      functionName,
+      functionParams
+    });
+  },
+  isCrawlerRunning: () => {
+    return ipcRenderer.invoke('is-crawler-running');
+  },
+  startCrawl: () => {
+    return ipcRenderer.invoke('start-crawl');
+  },
+  stopCrawl: () => {
+    return ipcRenderer.invoke('stop-crawl');
   }
 };
 

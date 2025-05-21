@@ -1,140 +1,100 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, FileDown, Play, StopCircle, WifiPen } from 'lucide-react';
+import { ConfigKey } from '../shared/types';
+import ImportForm from './ImportForm';
+import Summary from './Summary';
+import ProductTable from './ProductTable';
 
 const App = () => {
-  const [threads, setThreads] = useState(2);
-  const [urlInput, setUrlInput] = useState('');
-  // results with some example
-  const [results, setResults] = useState([
-    { url: 'https://example.com', title: 'Example Product', price: '$19.99', error: null },
-    { url: 'https://example.com/2', title: 'Example Product 2', price: '$29.99', error: null },
-    { url: 'https://example.com/3', title: 'Example Product 3', price: '$39.99', error: 'Error fetching data' },
-  ]);
-  // const [results, setResults] = useState<any[]>([]);
+  const [configs, setConfigs] = useState<{ id: number; key: keyof typeof ConfigKey; value: any }[]>([]);
+  const [refresh, setRefresh] = useState(false);
+
+  const [results, setResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     window.Main.removeLoading();
-  }, []);
+    // get data from db
+    const getDataFromDB = async () => {
+      // get all config
+      const getAllConfig = await window.Main.database('getAllConfig', {});
+      console.log('getAllConfig', getAllConfig);
+      setConfigs(getAllConfig);
 
-  const handleImport = async () => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.txt';
-    fileInput.onchange = async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      setUrlInput(text.trim());
+      // get crawler status
+      const isCrawlerRunning = await window.Main.isCrawlerRunning();
+      console.log('isCrawlerRunning', isCrawlerRunning);
+      setIsRunning(isCrawlerRunning);
     };
-    fileInput.click();
-  };
+
+    getDataFromDB();
+  }, [refresh]);
 
   const handleStart = async () => {
-    const urls = urlInput.split('\n').map(u => u.trim()).filter(Boolean);
-    if (!urls.length) return;
-    setIsRunning(true);
-    setResults([]);
-
-    const res = await (window as any).electron.ipcRenderer.invoke('start-crawl', {
-      urls,
-      threads,
-    });
-    setResults(res);
-    setIsRunning(false);
+    await window.Main.startCrawl();
+    setRefresh((prev) => !prev);
   };
 
-  const handleStop = () => {
-    alert('Stop requested');
-    setIsRunning(false);
+  const handleStop = async () => {
+    await window.Main.stopCrawl();
+    setRefresh((prev) => !prev);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen p-6 bg-gray-50">
+      <div className="mx-auto space-y-8">
         {/* Config Form */}
-        <div className="bg-white shadow-lg rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Thread Count</label>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              className="w-full rounded-xl border border-gray-300 p-2"
-              value={threads}
-              onChange={e => setThreads(Number(e.target.value))}
-            />
-          </div>
+        <div className="flex flex-col gap-6 p-6 bg-white shadow-lg rounded-2xl">
+          <div className="flex flex-row items-end gap-4">
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">Thread Count</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                className="w-full p-2 text-center border border-gray-300 rounded-xl"
+                value={configs.find((c) => c.key === ConfigKey.threadCount)?.value || 1}
+                onChange={async (e) => {
+                  // update db
+                  const value = e.target.value;
+                  const res = await window.Main.database('setConfigValue', { key: ConfigKey.threadCount, value });
 
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Amazon URLs</label>
-            <textarea
-              rows={6}
-              className="w-full rounded-xl border border-gray-300 p-3 font-mono"
-              placeholder="One URL per line"
-              value={urlInput}
-              onChange={e => setUrlInput(e.target.value)}
-            />
-          </div>
+                  setRefresh((prev) => !prev);
+                }}
+              />
+            </div>
 
-          <div className="md:col-span-2 flex gap-4">
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl flex items-center gap-2 disabled:opacity-50"
+              className="bg-gray-200 max-h-[52px] hover:bg-gray-300 text-black px-5 py-2 rounded-xl flex items-center gap-2"
+              // onClick={handleImport}
+            >
+              <WifiPen className="w-4 h-4" />
+              Proxies
+            </button>
+
+            <button
+              className="flex items-center gap-2 px-5 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50"
               onClick={handleStart}
               disabled={isRunning}
             >
-              {isRunning ? <Loader2 className="animate-spin w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               Start
             </button>
             <button
-              className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl flex items-center gap-2"
+              className="flex items-center gap-2 px-5 py-2 text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50 "
               onClick={handleStop}
               disabled={!isRunning}
             >
               <StopCircle className="w-4 h-4" /> Stop
             </button>
-            <button
-              className="bg-gray-200 hover:bg-gray-300 text-black px-5 py-2 rounded-xl flex items-center gap-2"
-              onClick={handleImport}
-            >
-              <FileDown className="w-4 h-4" /> Import URLs
-            </button>
-            <button
-              className="bg-gray-200 hover:bg-gray-300 text-black px-5 py-2 rounded-xl flex items-center gap-2"
-              onClick={handleImport}
-            >
-              <WifiPen className="w-4 h-4"/>
-               Proxies
-            </button>
           </div>
+
+          <Summary />
+
+          <ImportForm />
         </div>
 
-        {/* Results Table */}
-        {results.length > 0 && (
-          <div className="bg-white shadow-md rounded-2xl p-6 overflow-auto">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Results</h2>
-            <table className="w-full text-sm text-left">
-              <thead className="text-gray-600 bg-gray-100">
-                <tr>
-                  <th className="px-4 py-2">URL</th>
-                  <th className="px-4 py-2">Title</th>
-                  <th className="px-4 py-2">Price</th>
-                  <th className="px-4 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((r, i) => (
-                  <tr key={i} className="border-t border-gray-200">
-                    <td className="px-4 py-2 text-blue-600 underline break-all">{r.url}</td>
-                    <td className="px-4 py-2">{r.title || '-'}</td>
-                    <td className="px-4 py-2">{r.price || '-'}</td>
-                    <td className={`px-4 py-2 ${r.error ? 'text-red-500' : 'text-green-600'}`}>{r.error || 'Success'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <ProductTable />
       </div>
     </div>
   );
