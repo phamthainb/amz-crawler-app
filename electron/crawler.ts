@@ -24,6 +24,9 @@ export async function crawlProduct(url: string, index: number): Promise<any> {
         return '/Applications/Chromium.app/Contents/MacOS/Chromium';
       }
       // Fallback to the relative path if not found in the default location
+
+      // https://storage.googleapis.com/chromium-browser-snapshots/Mac/1181205/chrome-mac.zip
+
       return path.resolve('browser', 'chrome-mac/Chromium.app/Contents/MacOS/Chromium');
     } else {
       throw new Error(`Unsupported OS: ${platform}`);
