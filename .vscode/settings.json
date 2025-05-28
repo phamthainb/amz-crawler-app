@@ -10,7 +10,7 @@
   "cSpell.words": ["leaderboards", "nestjs", "TWCA", "webpush"],
   "files.exclude": {
     ".git": true,
-    "dist": true,
+    // "dist": true,
     "node_modules": true,
     ".build": true,
     "**/.DS_Store": true,

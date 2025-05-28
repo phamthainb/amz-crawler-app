@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Download, Eye, RefreshCcw, Trash2 } from 'lucide-react';
 import { ItemStatus } from '../shared/types';
 
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 20;
 
 export default function ProductTable() {
   const [products, setProducts] = useState<any[]>([]);

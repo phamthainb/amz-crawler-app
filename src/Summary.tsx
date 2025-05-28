@@ -67,9 +67,9 @@ export default function Summary() {
     fetchData();
 
     const interval = setInterval(async () => {
-      if (await window.Main.isCrawlerRunning()) {
-        fetchData();
-      }
+      // if (await window.Main.isCrawlerRunning()) {
+      fetchData();
+      // }
     }, 5000); // Fetch data every 5 seconds
     return () => {
       clearInterval(interval);

@@ -4,12 +4,11 @@ import { ConfigKey } from '../shared/types';
 import ImportForm from './ImportForm';
 import Summary from './Summary';
 import ProductTable from './ProductTable';
+import { use } from 'i18next';
 
 const App = () => {
   const [configs, setConfigs] = useState<{ id: number; key: keyof typeof ConfigKey; value: any }[]>([]);
   const [refresh, setRefresh] = useState(false);
-
-  const [results, setResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
@@ -25,19 +24,35 @@ const App = () => {
       const isCrawlerRunning = await window.Main.isCrawlerRunning();
       console.log('isCrawlerRunning', isCrawlerRunning);
       setIsRunning(isCrawlerRunning);
+
+      console.log('getDataFromDB', { isCrawlerRunning, getAllConfig });
+
+      if (isCrawlerRunning) {
+        // getDataFromDB interval
+        const interval = setInterval(async () => {
+          getDataFromDB();
+          if (!isCrawlerRunning) {
+            clearInterval(interval);
+          }
+        }, 5000); // Check every 5 seconds
+        return () => {
+          clearInterval(interval);
+        };
+      }
     };
 
     getDataFromDB();
   }, [refresh]);
 
   const handleStart = async () => {
-    await window.Main.startCrawl();
-    setRefresh((prev) => !prev);
+    window.Main.startCrawl();
+    // setRefresh((prev) => !prev);
+    // setIsRunning(true);
   };
 
   const handleStop = async () => {
     await window.Main.stopCrawl();
-    setRefresh((prev) => !prev);
+    // setRefresh((prev) => !prev);
   };
 
   return (

@@ -46,7 +46,7 @@ export function insertProduct({ url }: { url: string }): RunResult {
   return result;
 }
 
-export function updateProduct({ id, data }: { id: number; data: any }): RunResult {
+export function updateProduct({ id, data }: { id: number; data: any }) {
   // using ...rest operator to get all properties of data
   const keys = Object.keys(data);
   const values = Object.values(data);
@@ -59,17 +59,17 @@ export function updateProduct({ id, data }: { id: number; data: any }): RunResul
   return result;
 }
 
-export function getProductsByStatus({ status, limit }: { status: string; limit?: string }): any[] {
+export function getProductsByStatus({ status, limit }: { status: string; limit?: number }): any[] {
   let sql = `SELECT * FROM products WHERE status = ?`;
   if (limit) {
     sql += ` LIMIT ?`;
   }
   const stmt = db.prepare(sql);
-  const params = [status];
+  const params: any[] = [status];
   if (limit) {
     params.push(limit);
   }
-  return stmt.all(...params);
+  return stmt.all([...params]);
 }
 export function getAllProducts(): any[] {
   const stmt = db.prepare(`SELECT * FROM products`);

@@ -198,6 +198,7 @@ const api = {
     return ipcRenderer.invoke('is-crawler-running');
   },
   startCrawl: () => {
+    console.log('startCrawl called');
     return ipcRenderer.invoke('start-crawl');
   },
   stopCrawl: () => {

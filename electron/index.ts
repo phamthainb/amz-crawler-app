@@ -4,7 +4,9 @@ import { join } from 'path';
 // Packages
 import { BrowserWindow, app, ipcMain, IpcMainEvent, nativeTheme, screen } from 'electron';
 import isDev from 'electron-is-dev';
-import db, { runDBFunction } from './db';
+import { runDBFunction } from './db';
+import { crawlProduct } from './crawler';
+import { ConfigKey, ItemStatus } from '../shared/types';
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -89,14 +91,32 @@ ipcMain.handle('start-crawl', async () => {
 
   while (crawlerRunning) {
     // get config, urls, threads from db
-    const threads = runDBFunction.getConfigValue({ key: 'threads' });
-    const urls = runDBFunction.getProductsByStatus({ status: 'import', limit: `${threads}` });
+    const threads = runDBFunction.getConfigValue({ key: ConfigKey.threadCount }) || 3;
+    const urls = runDBFunction.getProductsByStatus({ status: 'import', limit: Number(threads) });
     if (urls.length < 1) {
       console.log('No more urls to crawl');
       crawlerRunning = false;
       break;
     }
     console.log('start-crawl', { urls: urls.length, threads });
+    // loop through urls and crawl them in same time
+    let threadCount = 0;
+    const promises = urls.map(async (url) => {
+      try {
+        // update status product to processing
+        runDBFunction.updateProduct({ id: url?.id, data: { status: ItemStatus.processing } });
+        const result = await crawlProduct(url.url, (threadCount += 1));
+        console.log('Crawled:', result);
+        runDBFunction.updateProduct({ id: url.id, data: { status: ItemStatus.done, ...result } });
+      } catch (error) {
+        console.error('Error crawling URL:', url.url, error);
+        runDBFunction.updateProduct({ id: url.id, data: { status: ItemStatus.error, error: String(error) } });
+      }
+    });
+    await Promise.all(promises);
+    console.log('Crawl batch completed');
+    // wait for 1 second before next batch
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   console.log('Crawl stopped');
