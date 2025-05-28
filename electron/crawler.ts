@@ -8,9 +8,22 @@ export async function crawlProduct(url: string, index: number): Promise<any> {
   // Detect platform and set Chromium path
   const chromePath = (() => {
     const platform = os.platform();
+
+    // https://commondatastorage.googleapis.com/chromium-browser-snapshots/index.html
+
     if (platform === 'win32') {
-      return path.resolve('browser', 'chrome.exe');
+      // check if Chromium is installed in the default location for Windows
+      if (fs.existsSync('C:\\Program Files\\Chromium\\Application\\chrome.exe')) {
+        return 'C:\\Program Files\\Chromium\\Application\\chrome.exe';
+      }
+      // Fallback to the relative path if not found in the default location
+      return path.resolve('browser', 'chrome-win', 'chrome.exe');
     } else if (platform === 'darwin') {
+      // check if Chromium is installed in the default location for macOS
+      if (fs.existsSync('/Applications/Chromium.app')) {
+        return '/Applications/Chromium.app/Contents/MacOS/Chromium';
+      }
+      // Fallback to the relative path if not found in the default location
       return path.resolve('browser', 'chrome-mac/Chromium.app/Contents/MacOS/Chromium');
     } else {
       throw new Error(`Unsupported OS: ${platform}`);
@@ -31,6 +44,7 @@ export async function crawlProduct(url: string, index: number): Promise<any> {
   const windowY = baseY + index * offsetY;
 
   console.log(`Launching browser at position: (${windowX}, ${windowY})`);
+  console.log(`Using Chromium executable at: ${chromePath}`);
 
   const browser = await puppeteer.launch({
     timeout: 0,
